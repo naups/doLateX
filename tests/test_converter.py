@@ -353,6 +353,34 @@ class TestCompleteDocument:
         assert r"\section{Hello}" in result
         assert r"\documentclass[11pt,a4paper]{article}" in result
 
+    def test_regression_legacy_output_structure(self, converter: LatexConverter) -> None:
+        """Complete document output with preserve_format=False must match old format."""
+        result = converter.convert("# Title\n\nBody.\n")
+        assert r"\documentclass[11pt,a4paper]{article}" in result
+        assert r"\section{Title}" in result
+        assert r"\begin{document}" in result
+        assert r"\end{document}" in result
+
+    def test_preserve_format_body_only(self, converter: LatexConverter) -> None:
+        conv = LatexConverter(preserve_format=True)
+        result = conv.convert("# Title\n\nBody.\n", complete=False)
+        assert r"\chapter{Title}" in result
+        assert r"\documentclass" not in result
+
+    def test_preserve_format_with_custom_metadata(self, converter: LatexConverter) -> None:
+        from dolatex.format import DocumentFormat
+        conv = LatexConverter(
+            preserve_format=True,
+            template_name="base",
+            title="My Thesis",
+            author="Student",
+            doc_format=DocumentFormat().to_template_vars(),
+        )
+        result = conv.convert("# Title\n\nBody.\n")
+        assert r"\title{My Thesis}" in result
+        assert r"\author{Student}" in result
+        assert r"\chapter{Title}" in result
+
 
 # ---------------------------------------------------------------------------
 # Edge cases
