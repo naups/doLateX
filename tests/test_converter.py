@@ -323,6 +323,36 @@ class TestCompleteDocument:
         assert r"\documentclass" not in result
         assert r"\begin{document}" not in result
 
+    def test_preserve_format_uses_chapter(self, converter: LatexConverter) -> None:
+        conv = LatexConverter(preserve_format=True, template_name="base")
+        result = conv.convert("# Introduction\n\nContent.\n")
+        assert r"\chapter{Introduction}" in result
+        assert r"\documentclass" in result
+
+    def test_preserve_format_heading_mapping(self, converter: LatexConverter) -> None:
+        conv = LatexConverter(preserve_format=True, template_name="base")
+        md = "# H1\n## H2\n### H3\n#### H4\n"
+        result = conv.convert(md, complete=False)
+        assert r"\chapter{H1}" in result
+        assert r"\section{H2}" in result
+        assert r"\subsection{H3}" in result
+        assert r"\subsubsection{H4}" in result
+
+    def test_preserve_format_template_base(self, converter: LatexConverter) -> None:
+        from dolatex.format import DocumentFormat
+        fmt = DocumentFormat()
+        conv = LatexConverter(preserve_format=True, template_name="base", doc_format=fmt.to_template_vars())
+        result = conv.convert("# Title\n\nBody.\n")
+        assert r"\documentclass" in result
+        assert r"\begin{document}" in result
+        assert r"\end{document}" in result
+
+    def test_legacy_mode_still_works(self, converter: LatexConverter) -> None:
+        """Existing tests must still pass — no preserve flag."""
+        result = converter.convert("# Hello\n\nWorld.\n")
+        assert r"\section{Hello}" in result
+        assert r"\documentclass[11pt,a4paper]{article}" in result
+
 
 # ---------------------------------------------------------------------------
 # Edge cases

@@ -145,6 +145,10 @@ class LatexConverter:
         title: Optional[str] = None,
         author: Optional[str] = None,
         date: Optional[str] = None,
+        *,
+        preserve_format: bool = False,
+        template_name: str = "base",
+        doc_format: Optional[dict] = None,
     ) -> None:
         self.document_class = document_class
         self.font_size = font_size
@@ -153,6 +157,9 @@ class LatexConverter:
         self.title = title
         self.author = author
         self.date = date
+        self.preserve_format = preserve_format
+        self.template_name = template_name
+        self.doc_format = doc_format or {}
 
     # ------------------------------------------------------------------
     # Public API
@@ -190,12 +197,22 @@ class LatexConverter:
     def _wrap_document(self, body: str) -> str:
         """Wrap *body* in a complete LaTeX document structure."""
         title_block = self._build_title_block(body)
-        parts: list[str] = [
-            rf"\documentclass[{self.font_size},{self.geometry}]{{{self.document_class}}}",
-            DEFAULT_PREAMBLE,
-        ]
-        if self.custom_preamble:
-            parts.append(self.custom_preamble.strip())
+
+        if self.preserve_format:
+            # Generate preamble from template
+            from dolatex.template import TemplateEngine
+            engine = TemplateEngine()
+            preamble = engine.render(self.template_name, self.doc_format)
+            parts: list[str] = [preamble]
+        else:
+            # Traditional preamble
+            parts = [
+                rf"\documentclass[{self.font_size},{self.geometry}]{{{self.document_class}}}",
+                DEFAULT_PREAMBLE,
+            ]
+            if self.custom_preamble:
+                parts.append(self.custom_preamble.strip())
+
         parts.append("")
         parts.append(r"\begin{document}")
         if title_block:
@@ -356,12 +373,24 @@ class LatexConverter:
         """Convert a heading match to the corresponding LaTeX command."""
         level = len(m.group(1))
         text = self._inline_to_latex(m.group(2).strip())
-        commands = {
-            1: "section",
-            2: "subsection",
-            3: "subsubsection",
-            4: "paragraph",
-        }
+
+        if self.preserve_format:
+            # report class: chapter/section/subsection/subsubsection
+            commands = {
+                1: "chapter",
+                2: "section",
+                3: "subsection",
+                4: "subsubsection",
+            }
+        else:
+            # article class: section/subsection/subparagraph
+            commands = {
+                1: "section",
+                2: "subsection",
+                3: "subsubsection",
+                4: "paragraph",
+            }
+
         cmd = commands.get(level, "subparagraph")
         state.output.append(rf"\{cmd}{{{text}}}")
 
