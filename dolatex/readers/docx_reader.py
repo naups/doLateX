@@ -248,7 +248,7 @@ class DocxReader(DocumentReader):
             if style.font and style.font.name:
                 fmt.font_family = style.font.name.lower()
             if style.font and style.font.size:
-                fmt.body_font_size = self._halfpoint_to_pt(style.font.size)
+                fmt.body_font_size = self._emu_to_pt_str(style.font.size)
         except (KeyError, AttributeError):
             pass
 
@@ -268,7 +268,7 @@ class DocxReader(DocumentReader):
             try:
                 h_style = doc.styles[f"Heading {level}"]
                 if h_style.font and h_style.font.size:
-                    fmt.heading_sizes[level] = self._halfpoint_to_pt(h_style.font.size)
+                    fmt.heading_sizes[level] = self._emu_to_pt_str(h_style.font.size)
             except (KeyError, AttributeError):
                 pass
 
@@ -281,17 +281,16 @@ class DocxReader(DocumentReader):
         return f"{cm:.1f}cm"
 
     @staticmethod
-    def _halfpoint_to_pt(half_points: int) -> str:
-        """Convert half-points (e.g. 48 → 24pt) to a pt string."""
-        pt = half_points / 2
-        pt = round(pt)
+    def _emu_to_pt_str(emu: int) -> str:
+        """Convert EMU (English Metric Units) to a pt string like "12pt"."""
+        pt = round(emu / 12700)  # 1 pt = 12700 EMU
         return f"{pt}pt"
 
     @staticmethod
     def _page_size_str(width_emu: int, height_emu: int) -> str:
         """Map DOCX page dimensions to LaTeX page size names."""
-        # A4: 210x297mm = ~11906x16838 EMU
-        # Letter: 215.9x279.4mm = ~12240x15840 EMU
+        # A4: 210x297mm = ~7560000x10692000 EMU
+        # Letter: 215.9x279.4mm = ~7772400x10058400 EMU
         w_mm = width_emu / 36000  # 1 mm = 36000 EMU
         h_mm = height_emu / 36000
         if abs(w_mm - 210) < 5 and abs(h_mm - 297) < 5:
