@@ -59,9 +59,6 @@ templates_dir = _HERE / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
 templates.env.cache = _SafeCache()
 
-converter = LatexConverter()
-
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -95,20 +92,45 @@ async def index(request: Request) -> HTMLResponse:
 
 
 @app.post("/convert")
-async def convert_markdown(markdown: str = Form(default="")) -> dict:
+async def convert_markdown(
+    markdown: str = Form(default=""),
+    preserve_format: bool = Form(default=False),
+    template: str = Form(default="base"),
+) -> dict:
     """Accept Markdown text, return LaTeX result as JSON."""
-    latex = converter.convert(markdown)
+    conv = LatexConverter(
+        preserve_format=preserve_format,
+        template_name=template,
+    )
+    latex = conv.convert(markdown)
     return {"latex_result": latex}
 
 
 @app.post("/upload")
-async def upload_file(file: UploadFile) -> dict:
-    """Accept an uploaded file (``.md``, ``.docx``, ``.pdf``), return LaTeX JSON."""
+async def upload_file(
+    file: UploadFile,
+    preserve_format: bool = Form(default=False),
+    template: str = Form(default="base"),
+) -> dict:
+    """Accept an uploaded file, return LaTeX JSON."""
     content = await file.read()
     filename = file.filename or "document.md"
     try:
+        from dolatex.readers import extract_format
         markdown_text = _extract_markdown(content, filename)
-        latex = converter.convert(markdown_text)
+        ext = Path(filename).suffix.lower()
+
+        doc_format_vars = None
+        if preserve_format:
+            doc_format = extract_format(content, ext)
+            doc_format_vars = doc_format.to_template_vars()
+
+        conv = LatexConverter(
+            preserve_format=preserve_format,
+            template_name=template,
+            doc_format=doc_format_vars,
+        )
+        latex = conv.convert(markdown_text)
         return {
             "latex_result": latex,
             "markdown_text": markdown_text,
@@ -122,24 +144,18 @@ async def upload_file(file: UploadFile) -> dict:
         }
 
 
-def _extract_markdown(content: bytes, filename: str) -> str:
-    """Extract Markdown text from *content* using the appropriate reader."""
-    ext = Path(filename).suffix.lower()
-    if ext not in _ALLOWED_EXTENSIONS:
-        raise ValueError(
-            f"Unsupported format {ext!r}. "
-            f"Allowed: {', '.join(sorted(_ALLOWED_EXTENSIONS))}"
-        )
-    try:
-        return read_text(content, ext)
-    except UnicodeDecodeError:
-        raise ValueError("Could not decode file content.")
-
-
 @app.post("/download")
-async def download_latex(markdown: str = Form(default="")) -> Response:
+async def download_latex(
+    markdown: str = Form(default=""),
+    preserve_format: bool = Form(default=False),
+    template: str = Form(default="base"),
+) -> Response:
     """Accept Markdown text, return .tex file as a download."""
-    latex = converter.convert(markdown)
+    conv = LatexConverter(
+        preserve_format=preserve_format,
+        template_name=template,
+    )
+    latex = conv.convert(markdown)
     return PlainTextResponse(
         content=latex,
         media_type="application/x-tex",

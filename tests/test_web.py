@@ -69,6 +69,24 @@ class TestConvertEndpoint:
         data = resp.json()
         assert "latex_result" in data
 
+    async def test_convert_with_preserve_format(self, client: AsyncClient) -> None:
+        resp = await client.post(
+            "/convert",
+            data={"markdown": "# Hello\n\nWorld.\n", "preserve_format": "true", "template": "base"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert r"\chapter{Hello}" in data["latex_result"]
+
+    async def test_convert_preserve_format_default_template(self, client: AsyncClient) -> None:
+        resp = await client.post(
+            "/convert",
+            data={"markdown": "# Hello\n\nWorld.\n", "preserve_format": "true"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert r"\chapter{Hello}" in data["latex_result"]
+
 
 # ---------------------------------------------------------------------------
 # POST /upload
@@ -103,6 +121,14 @@ class TestDownloadEndpoint:
         assert resp.headers["content-type"] == "application/x-tex"
         assert "attachment; filename=output.tex" in resp.headers["content-disposition"]
         assert r"\section{Doc}" in resp.text
+
+    async def test_download_with_preserve_format(self, client: AsyncClient) -> None:
+        resp = await client.post(
+            "/download",
+            data={"markdown": "# Doc\n\nBody.\n", "preserve_format": "true"},
+        )
+        assert resp.status_code == 200
+        assert r"\chapter{Doc}" in resp.text
 
 
 # ---------------------------------------------------------------------------
