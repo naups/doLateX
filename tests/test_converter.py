@@ -360,3 +360,14 @@ class TestEdgeCases:
         assert "<!--" not in result
         assert "-->" not in result
         assert "Not a comment" in result
+
+
+class TestDocxFormatExtraction:
+    def test_extract_format_from_docx_returns_defaults_on_missing_file(self):
+        """Should return DocumentFormat with defaults when python-docx unavailable or file missing."""
+        from dolatex.format import DocumentFormat
+
+        result = DocumentFormat()
+        assert result.page_size == "a4paper"
+        assert result.font_family == "calibri"
+        assert result.margin_left == "4cm"

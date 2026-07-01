@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Optional
+
+from dolatex.format import DocumentFormat
 
 
 class DocumentReader(ABC):
@@ -37,3 +40,11 @@ class DocumentReader(ABC):
         ``{".md", ".markdown"}``.
         """
         ...
+
+    def extract_format(self, data: str | bytes | Path) -> Optional[DocumentFormat]:
+        """Extract format metadata from *data*.
+
+        Returns ``None`` to signal "format extraction not supported".
+        Subclasses that support format extraction should override this.
+        """
+        return None

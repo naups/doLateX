@@ -18,6 +18,7 @@ from .base import DocumentReader
 from .markdown_reader import MarkdownReader
 from .docx_reader import DocxReader
 from .pdf_reader import PdfReader
+from dolatex.format import DocumentFormat
 
 
 # ---------------------------------------------------------------------------
@@ -109,10 +110,39 @@ def get_reader(ext: str) -> Optional[DocumentReader]:
     return None
 
 
+def extract_format(path_or_bytes: str | bytes | Path, ext: str) -> DocumentFormat:
+    """Extract format metadata from a document file.
+
+    Parameters
+    ----------
+    path_or_bytes:
+        Path to the file or raw bytes of the document.
+    ext:
+        File extension including the dot (e.g. ``.docx``, ``.pdf``).
+
+    Returns
+    -------
+    DocumentFormat
+        Extracted formatting metadata, or defaults if unsupported.
+    """
+    from dolatex.format import DocumentFormat
+
+    ext = ext.lower()
+    for reader in _READERS:
+        if ext in reader.extensions():
+            result = reader.extract_format(path_or_bytes)
+            if result is not None:
+                return result
+            break
+    return DocumentFormat()  # defaults
+
+
 __all__ = [
+    "DocumentFormat",
     "DocumentReader",
     "read_document",
     "read_text",
     "supported_extensions",
     "get_reader",
+    "extract_format",
 ]

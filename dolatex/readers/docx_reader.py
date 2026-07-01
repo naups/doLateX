@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .base import DocumentReader
+from dolatex.format import DocumentFormat
 
 
 class DocxReader(DocumentReader):
@@ -212,3 +213,103 @@ class DocxReader(DocumentReader):
                                     fmt = numFmt.get(qn("w:val"), "")
                                     return fmt == "decimal"
         return False  # default to unordered
+
+    def extract_format(self, data: str | bytes | Path) -> Optional[DocumentFormat]:
+        """Extract page layout and typography info from a .docx file."""
+        try:
+            from docx import Document as DocxDocument
+        except ModuleNotFoundError:
+            return DocumentFormat()  # defaults
+
+        if isinstance(data, bytes):
+            import io
+
+            doc = DocxDocument(io.BytesIO(data))
+        elif isinstance(data, Path):
+            doc = DocxDocument(str(data))
+        else:
+            doc = DocxDocument(str(data))
+
+        fmt = DocumentFormat()
+
+        # --- Page size & margins (from first section) ---
+        section = doc.sections[0] if doc.sections else None
+        if section:
+            fmt.page_size = self._page_size_str(section.page_width, section.page_height)
+            fmt.orientation = "landscape" if section.orientation else "portrait"
+            fmt.margin_top = self._emu_to_cm_str(section.top_margin)
+            fmt.margin_bottom = self._emu_to_cm_str(section.bottom_margin)
+            fmt.margin_left = self._emu_to_cm_str(section.left_margin)
+            fmt.margin_right = self._emu_to_cm_str(section.right_margin)
+
+        # --- Default font (from style defaults) ---
+        try:
+            style = doc.styles["Normal"]
+            if style.font and style.font.name:
+                fmt.font_family = style.font.name.lower()
+            if style.font and style.font.size:
+                fmt.body_font_size = self._halfpoint_to_pt(style.font.size)
+        except (KeyError, AttributeError):
+            pass
+
+        # --- Default paragraph format ---
+        try:
+            style = doc.styles["Normal"]
+            pf = style.paragraph_format
+            if pf.alignment is not None:
+                fmt.alignment = self._alignment_str(pf.alignment)
+            if pf.first_line_indent:
+                fmt.first_line_indent = self._emu_to_cm_str(pf.first_line_indent)
+        except (KeyError, AttributeError):
+            pass
+
+        # --- Heading font sizes ---
+        for level in range(1, 5):
+            try:
+                h_style = doc.styles[f"Heading {level}"]
+                if h_style.font and h_style.font.size:
+                    fmt.heading_sizes[level] = self._halfpoint_to_pt(h_style.font.size)
+            except (KeyError, AttributeError):
+                pass
+
+        return fmt
+
+    @staticmethod
+    def _emu_to_cm_str(emu: int) -> str:
+        """Convert EMU (English Metric Units) to a cm string like "2.54cm"."""
+        cm = emu / 360000  # 1 cm = 360000 EMU
+        return f"{cm:.1f}cm"
+
+    @staticmethod
+    def _halfpoint_to_pt(half_points: int) -> str:
+        """Convert half-points (e.g. 48 → 24pt) to a pt string."""
+        pt = half_points / 2
+        pt = round(pt)
+        return f"{pt}pt"
+
+    @staticmethod
+    def _page_size_str(width_emu: int, height_emu: int) -> str:
+        """Map DOCX page dimensions to LaTeX page size names."""
+        # A4: 210x297mm = ~11906x16838 EMU
+        # Letter: 215.9x279.4mm = ~12240x15840 EMU
+        w_mm = width_emu / 36000  # 1 mm = 36000 EMU
+        h_mm = height_emu / 36000
+        if abs(w_mm - 210) < 5 and abs(h_mm - 297) < 5:
+            return "a4paper"
+        if abs(w_mm - 215.9) < 5 and abs(h_mm - 279.4) < 5:
+            return "letterpaper"
+        # Custom: use width x height
+        return f"{w_mm:.0f}mm x {h_mm:.0f}mm"
+
+    @staticmethod
+    def _alignment_str(alignment: int) -> str:
+        """Map python-docx WD_ALIGN_PARAGRAPH constants to strings."""
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+        mapping = {
+            WD_ALIGN_PARAGRAPH.LEFT: "left",
+            WD_ALIGN_PARAGRAPH.CENTER: "center",
+            WD_ALIGN_PARAGRAPH.RIGHT: "right",
+            WD_ALIGN_PARAGRAPH.JUSTIFY: "justified",
+        }
+        return mapping.get(alignment, "justified")
