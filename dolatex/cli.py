@@ -28,6 +28,13 @@ _CONVERTER_OPTIONS = [
     click.option("--author", default=None, help="Document author"),
 ]
 
+_PRESERVE_OPTIONS = [
+    click.option("--preserve-format", is_flag=True, default=False,
+                 help="Preserve original document formatting in LaTeX output"),
+    click.option("--template", default="base",
+                 help="LaTeX template name (e.g. base, skripsi-filkom)"),
+]
+
 
 def _apply_options(decorators):
     """Apply a list of decorators in reverse order (bottom-up)."""
@@ -59,6 +66,7 @@ def cli() -> None:
               default=None,
               help="Input format (auto-detected from extension when possible)")
 @_apply_options(_CONVERTER_OPTIONS)
+@_apply_options(_PRESERVE_OPTIONS)
 @click.option("--no-complete", "no_complete", is_flag=True, default=False,
               help="Output only the body, not a complete document")
 def convert(
@@ -72,6 +80,8 @@ def convert(
     title: Optional[str],
     author: Optional[str],
     no_complete: bool,
+    preserve_format: bool,
+    template: str,
 ) -> None:
     """Convert a document to LaTeX.
 
@@ -87,6 +97,15 @@ def convert(
         click.echo("Error: provide input via -i/--input or --stdin", err=True)
         sys.exit(1)
 
+    # --- Build metadata if preserving format ---------------------------------
+    doc_format_vars = None
+    if preserve_format and input_file is not None:
+        from dolatex.format import DocumentFormat
+        from dolatex.readers import extract_format
+        ext = Path(input_file).suffix.lower()
+        doc_format = extract_format(input_file, ext)
+        doc_format_vars = doc_format.to_template_vars()
+
     # --- Convert -------------------------------------------------------------
     converter = LatexConverter(
         document_class=document_class,
@@ -94,6 +113,9 @@ def convert(
         geometry=geometry,
         title=title,
         author=author,
+        preserve_format=preserve_format,
+        template_name=template,
+        doc_format=doc_format_vars,
     )
     latex = converter.convert(markdown_text, complete=not no_complete)
 

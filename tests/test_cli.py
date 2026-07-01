@@ -81,6 +81,23 @@ class TestConvertCommand:
         assert result.exit_code == 0
         assert r"\author{Alice}" in result.output
 
+    def test_preserve_format_flag(self, runner: CliRunner) -> None:
+        result = runner.invoke(
+            cli, ["convert", "--stdin", "--preserve-format", "--template", "base"],
+            input="# Title\n\nBody.\n"
+        )
+        assert result.exit_code == 0
+        assert r"\chapter{Title}" in result.output
+        assert r"\documentclass" in result.output
+
+    def test_preserve_format_default_template(self, runner: CliRunner) -> None:
+        result = runner.invoke(
+            cli, ["convert", "--stdin", "--preserve-format"],
+            input="# Title\n\nBody.\n"
+        )
+        assert result.exit_code == 0
+        assert r"\chapter{Title}" in result.output
+
 
 # ---------------------------------------------------------------------------
 # serve command
