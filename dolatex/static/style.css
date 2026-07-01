@@ -1,0 +1,51 @@
+/* doLatex - Additional static styles
+   Primary styling is inlined in the template for zero-dependency loading.
+   This file provides overrides and enhancements for the web UI.
+*/
+
+/* ------------------------------------------------------------------ */
+/* Syntax highlight - LaTeX code block                                */
+/* ------------------------------------------------------------------ */
+.latex-keyword  { color: #89b4fa; }
+.latex-comment  { color: #6c7086; }
+.latex-string   { color: #a6e3a1; }
+.latex-command  { color: #f38ba8; }
+.latex-number   { color: #fab387; }
+
+/* ------------------------------------------------------------------ */
+/* Custom scrollbar for output panel                                  */
+/* ------------------------------------------------------------------ */
+#latex-output::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+#latex-output::-webkit-scrollbar-track {
+    background: #181825;
+}
+
+#latex-output::-webkit-scrollbar-thumb {
+    background: #45475a;
+    border-radius: 4px;
+}
+
+#latex-output::-webkit-scrollbar-thumb:hover {
+    background: #585b70;
+}
+
+/* ------------------------------------------------------------------ */
+/* Print-friendly                                                      */
+/* ------------------------------------------------------------------ */
+@media print {
+    header, .toolbar, footer, #convert-btn, #file-input {
+        display: none !important;
+    }
+    .panels {
+        grid-template-columns: 1fr;
+    }
+    #latex-output {
+        border: 1px solid #ccc;
+        color: #000;
+        background: #fff;
+    }
+}

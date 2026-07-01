@@ -1,0 +1,35 @@
+[project]
+name = "dolatex"
+version = "0.1.0"
+description = "Document to LaTeX converter"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "click>=8.1.0",
+    "python-multipart>=0.0.6",
+    "jinja2>=3.1.0",
+]
+optional-dependencies.dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.25.0",
+    "pytest-cov>=4.1.0",
+]
+optional-dependencies.pdf = ["pypdf>=4.0.0"]
+optional-dependencies.docx = ["python-docx>=1.1.0"]
+optional-dependencies.all = [
+    "pypdf>=4.0.0",
+    "python-docx>=1.1.0",
+]
+
+[project.scripts]
+dolatex = "dolatex.cli:cli"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
